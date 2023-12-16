@@ -4,16 +4,16 @@ import plotly.express as px
 
 
 @st.cache_data
-def get_data() -> pd.DataFrame:
-    data = pd.read_csv('MARKET_Car_Prices.csv')
+def get_data(file) -> pd.DataFrame:
+    data = pd.read_csv(file)
     data.dropna(inplace=True)
 
-    numbers_mapping = {'two': 2, 'four': 4, 'six': 6,
-                       'five': 5, 'three': 3, 'twelve': 12, 'eight': 8}
-    for col in ['num_of_doors', 'num_of_cylinders']:
-        col_str = data[col].astype(str)
-        col_nums = [numbers_mapping.get(w, w) for w in col_str]
-        data[col] = col_nums
+    # numbers_mapping = {'two': 2, 'four': 4, 'six': 6,
+    #                    'five': 5, 'three': 3, 'twelve': 12, 'eight': 8}
+    # for col in ['num_of_doors', 'num_of_cylinders']:
+    #     col_str = data[col].astype(str)
+    #     col_nums = [numbers_mapping.get(w, w) for w in col_str]
+    #     data[col] = col_nums
     return data
 
 
@@ -46,52 +46,48 @@ def create_plot(df, plot_type, X, Y, color):
         st.spinner('Please, complete filling the required fields.')
 
 
-st.title('Market Car Prices')
+st.title('Data Visualization')
+file = st.file_uploader("Choose a CSV file", type="csv")
+if file:
+    df = get_data(file)
 
-df = get_data()
+    st.dataframe(df.head())
 
+    numeric_columns = list(df.columns[df.dtypes != 'object'])
+    categorical_columns = list(df.columns[df.dtypes == 'object'])
+    all_columns = list(df.columns)
 
-st.dataframe(df.head())
+    st.sidebar.title('What kind of visualization do you want to make?')
+    plot_type = st.sidebar.selectbox(options=['', 'Histogram', 'Scatter Plot', 'Box Plot', 'Bar Plot'],
+                                     label='Select chart type')
 
+    X, Y, color = None, None, None
+    add_kde = False
 
-numeric_columns = list(df.columns[df.dtypes != 'object'])
-categorical_columns = list(df.columns[df.dtypes == 'object'])
-all_columns = list(df.columns)
+    if plot_type:
+        if plot_type in ['Histogram', 'Scatter Plot']:
+            X_cols = numeric_columns
+        elif plot_type == 'Bar Plot':
+            X_cols = categorical_columns
+        else:
+            X_cols = all_columns
 
-st.sidebar.title('What kind of visualization do you want to make?')
-plot_type = st.sidebar.selectbox(options=['', 'Histogram', 'Scatter Plot', 'Box Plot', 'Bar Plot'],
-                                 label='Select chart type')
+        X = st.sidebar.selectbox(options=[''] + X_cols, label='Select X axis')
 
-X, Y, color = None, None, None
-add_kde = False
+        if X:
+            if plot_type in ['Scatter Plot', 'Box Plot']:
+                if plot_type == 'Box Plot' and X in numeric_columns:
+                    Y_cols = categorical_columns
+                else:
+                    Y_cols = numeric_columns
 
-if plot_type:
-    if plot_type in ['Histogram', 'Scatter Plot']:
-        X_cols = numeric_columns
-    elif plot_type == 'Bar Plot':
-        X_cols = categorical_columns
-    else:
-        X_cols = all_columns
+                if X in Y_cols:
+                    Y_cols.remove(X)
+                Y = st.sidebar.selectbox(options=[''] + Y_cols, label='Select Y axis')
 
-    X = st.sidebar.selectbox(options=[''] + X_cols, label='Select X axis')
+                if Y and plot_type == 'Scatter Plot':
+                    color = st.sidebar.selectbox(options=[''] + all_columns,
+                                                 label='Select Color factor')
 
-    if X:
-        if plot_type in ['Scatter Plot', 'Box Plot']:
-            if plot_type == 'Box Plot' and X in numeric_columns:
-                Y_cols = categorical_columns
-            else:
-                Y_cols = numeric_columns
-
-            if X in Y_cols:
-                Y_cols.remove(X)
-            Y = st.sidebar.selectbox(options=[''] + Y_cols, label='Select Y axis')
-
-            if Y and plot_type == 'Scatter Plot':
-                color = st.sidebar.selectbox(options=[''] + all_columns,
-                                             label='Select Color factor')
-
-        # Create the plot
-        create_plot(df, plot_type, X, Y, color)
-
-
-
+            # Create the plot
+            create_plot(df, plot_type, X, Y, color)
